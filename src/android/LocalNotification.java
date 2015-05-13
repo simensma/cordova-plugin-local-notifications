@@ -23,8 +23,7 @@
 
 package de.appplant.cordova.plugin.localnotification;
 
-import java.util.ArrayList;
-import java.util.List;
+import android.os.Build;
 
 import org.apache.cordova.CallbackContext;
 import org.apache.cordova.CordovaInterface;
@@ -35,9 +34,11 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-import android.os.Build;
+import java.util.ArrayList;
+import java.util.List;
 
-import de.appplant.cordova.plugin.notification.*;
+import de.appplant.cordova.plugin.notification.Manager;
+import de.appplant.cordova.plugin.notification.Notification;
 
 /**
  * This plugin utilizes the Android AlarmManager in combination with local
@@ -177,6 +178,15 @@ public class LocalNotification extends CordovaPlugin {
                 else if (action.equals("getTriggeredIds")) {
                     getTriggeredIds(command);
                 }
+                else if (action.equals("getSingle")) {
+                    getSingle(args, command);
+                }
+                else if (action.equals("getSingleScheduled")) {
+                    getSingleScheduled(args, command);
+                }
+                else if (action.equals("getSingleTriggered")) {
+                    getSingleTriggered(args, command);
+                }
                 else if (action.equals("getAll")) {
                     getAll(args, command);
                 }
@@ -243,7 +253,9 @@ public class LocalNotification extends CordovaPlugin {
             Notification notification =
                     getNotificationMgr().cancel(id);
 
-            fireEvent("cancel", notification);
+            if (notification != null) {
+                fireEvent("cancel", notification);
+            }
         }
     }
 
@@ -268,7 +280,9 @@ public class LocalNotification extends CordovaPlugin {
             Notification notification =
                     getNotificationMgr().clear(id);
 
-            fireEvent("clear", notification);
+            if (notification != null) {
+                fireEvent("clear", notification);
+            }
         }
     }
 
@@ -372,6 +386,42 @@ public class LocalNotification extends CordovaPlugin {
     }
 
     /**
+     * Options from local notification.
+     *
+     * @param ids
+     *      Set of local notification IDs
+     * @param command
+     *      The callback context used when calling back into JavaScript.
+     */
+    private void getSingle (JSONArray ids, CallbackContext command) {
+        getOptions(ids.optString(0), Notification.Type.ALL, command);
+    }
+
+    /**
+     * Options from scheduled notification.
+     *
+     * @param ids
+     *      Set of local notification IDs
+     * @param command
+     *      The callback context used when calling back into JavaScript.
+     */
+    private void getSingleScheduled (JSONArray ids, CallbackContext command) {
+        getOptions(ids.optString(0), Notification.Type.SCHEDULED, command);
+    }
+
+    /**
+     * Options from triggered notification.
+     *
+     * @param ids
+     *      Set of local notification IDs
+     * @param command
+     *      The callback context used when calling back into JavaScript.
+     */
+    private void getSingleTriggered (JSONArray ids, CallbackContext command) {
+        getOptions(ids.optString(0), Notification.Type.TRIGGERED, command);
+    }
+
+    /**
      * Set of options from local notification.
      *
      * @param ids
@@ -380,15 +430,7 @@ public class LocalNotification extends CordovaPlugin {
      *      The callback context used when calling back into JavaScript.
      */
     private void getAll (JSONArray ids, CallbackContext command) {
-        List<JSONObject> options;
-
-        if (ids.length() == 0) {
-            options = getNotificationMgr().getOptions();
-        } else {
-            options = getNotificationMgr().getOptionsById(toList(ids));
-        }
-
-        command.success(new JSONArray(options));
+        getOptions(ids, Notification.Type.ALL, command);
     }
 
     /**
@@ -400,16 +442,7 @@ public class LocalNotification extends CordovaPlugin {
      *      The callback context used when calling back into JavaScript.
      */
     private void getScheduled (JSONArray ids, CallbackContext command) {
-        List<JSONObject> options;
-
-        if (ids.length() == 0) {
-            options = getNotificationMgr().getOptionsByType(Notification.Type.SCHEDULED);
-        } else {
-            options = getNotificationMgr().getOptionsBy(
-                    Notification.Type.SCHEDULED, toList(ids));
-        }
-
-        command.success(new JSONArray(options));
+        getOptions(ids, Notification.Type.SCHEDULED, command);
     }
 
     /**
@@ -421,13 +454,49 @@ public class LocalNotification extends CordovaPlugin {
      *      The callback context used when calling back into JavaScript.
      */
     private void getTriggered (JSONArray ids, CallbackContext command) {
+        getOptions(ids, Notification.Type.TRIGGERED, command);
+    }
+
+    /**
+     * Options from local notification.
+     *
+     * @param id
+     *      Set of local notification IDs
+     * @param type
+     *      The local notification life cycle type
+     * @param command
+     *      The callback context used when calling back into JavaScript.
+     */
+    private void getOptions (String id, Notification.Type type,
+                             CallbackContext command) {
+
+        JSONArray ids = new JSONArray().put(id);
+
+        JSONObject options =
+                getNotificationMgr().getOptionsBy(type, toList(ids)).get(0);
+
+        command.success(options);
+    }
+
+    /**
+     * Set of options from local notifications.
+     *
+     * @param ids
+     *      Set of local notification IDs
+     * @param type
+     *      The local notification life cycle type
+     * @param command
+     *      The callback context used when calling back into JavaScript.
+     */
+    private void getOptions (JSONArray ids, Notification.Type type,
+                             CallbackContext command) {
+
         List<JSONObject> options;
 
         if (ids.length() == 0) {
-            options = getNotificationMgr().getOptionsByType(Notification.Type.TRIGGERED);
+            options = getNotificationMgr().getOptionsByType(type);
         } else {
-            options = getNotificationMgr().getOptionsBy(
-                    Notification.Type.TRIGGERED, toList(ids));
+            options = getNotificationMgr().getOptionsBy(type, toList(ids));
         }
 
         command.success(new JSONArray(options));
